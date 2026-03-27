@@ -1,6 +1,7 @@
 package com.example.rpg_map_pet.di
 
 import android.content.Context
+import androidx.room.Room
 import com.example.rpg_map_pet.data.local.QuestDao
 import com.example.rpg_map_pet.data.local.QuestDatabase
 import dagger.Module
@@ -13,15 +14,19 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
-    
+
     @Provides
     @Singleton
     fun provideQuestDatabase(
         @ApplicationContext context: Context
     ): QuestDatabase {
-        return QuestDatabase.getDatabase(context)
+        return Room.databaseBuilder(
+            context.applicationContext,
+            QuestDatabase::class.java,
+            "quest_database"
+        ).build()
     }
-    
+
     @Provides
     @Singleton
     fun provideQuestDao(database: QuestDatabase): QuestDao {
