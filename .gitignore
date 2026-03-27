@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# API keys (create gradle-api.properties for actual keys)
+gradle-api.properties
