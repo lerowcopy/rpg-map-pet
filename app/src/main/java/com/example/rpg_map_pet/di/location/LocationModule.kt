@@ -1,10 +1,10 @@
-package com.example.rpg_map_pet.di
+package com.example.rpg_map_pet.di.location
 
 import android.content.Context
 import com.example.rpg_map_pet.data.repository.LocationRepositoryImpl
-import com.example.rpg_map_pet.domain.repository.LocationRepository
-import com.example.rpg_map_pet.domain.usecase.GetCurrentLocation
-import com.example.rpg_map_pet.domain.usecase.GetLocationUpdates
+import com.example.rpg_map_pet.domain.location.LocationRepository
+import com.example.rpg_map_pet.domain.location.GetCurrentLocation
+import com.example.rpg_map_pet.domain.location.GetLocationUpdates
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -13,6 +13,10 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+/**
+ * Dependency Injection module for location feature.
+ * Provides location repository and use cases.
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class LocationModule {
