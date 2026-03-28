@@ -1,17 +1,18 @@
 package com.example.rpg_map_pet.data.repository
 
 import android.util.Log
+import com.example.rpg_map_pet.core.utils.calculateDistance
 import com.example.rpg_map_pet.data.local.GeoJsonImporter
 import com.example.rpg_map_pet.data.local.LandmarkDao
 import com.example.rpg_map_pet.data.local.LandmarkEntity
+import com.example.rpg_map_pet.domain.landmark.ImportResult
+import com.example.rpg_map_pet.domain.landmark.LandmarkRepository
 import com.example.rpg_map_pet.domain.model.Landmark
-import com.example.rpg_map_pet.domain.repository.LandmarkRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.math.sqrt
 
 @Singleton
 class LandmarkRepositoryImpl @Inject constructor(
@@ -19,7 +20,7 @@ class LandmarkRepositoryImpl @Inject constructor(
     private val geoJsonImporter: GeoJsonImporter
 ) : LandmarkRepository {
 
-    override fun getLandmarks(): Flow<List<Landmark>> = 
+    override fun getLandmarks(): Flow<List<Landmark>> =
         landmarkDao.getAllLandmarks().map { entities ->
             entities.map { it.toDomainModel() }
         }
@@ -54,8 +55,12 @@ class LandmarkRepositoryImpl @Inject constructor(
         return distance <= landmark.radius
     }
 
-    override suspend fun importFromGeoJson(): GeoJsonImporter.ImportResult {
-        return geoJsonImporter.importToDatabase(landmarkDao)
+    override suspend fun importFromGeoJson(): ImportResult {
+        return when (val result = geoJsonImporter.importToDatabase(landmarkDao)) {
+            is GeoJsonImporter.ImportResult.AlreadyImported -> ImportResult.AlreadyImported
+            is GeoJsonImporter.ImportResult.Success -> ImportResult.Success(result.count)
+            is GeoJsonImporter.ImportResult.Error -> ImportResult.Error(result.message)
+        }
     }
 
     override suspend fun getLandmarksCount(): Int {
@@ -73,21 +78,6 @@ class LandmarkRepositoryImpl @Inject constructor(
             isVisited = isCompleted,
             visitedAt = if (isCompleted) System.currentTimeMillis() else null
         )
-    }
-
-    private fun calculateDistance(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Float {
-        val earthRadius = 6371000
-
-        val dLat = Math.toRadians(lat2 - lat1)
-        val dLng = Math.toRadians(lng2 - lng1)
-
-        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-                Math.sin(dLng / 2) * Math.sin(dLng / 2)
-
-        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-
-        return (earthRadius * c).toFloat()
     }
 }
 

@@ -5,7 +5,7 @@ import com.example.rpg_map_pet.data.local.QuestEntity
 import com.example.rpg_map_pet.data.local.QuestType as EntityQuestType
 import com.example.rpg_map_pet.domain.model.Quest
 import com.example.rpg_map_pet.domain.model.QuestType as DomainQuestType
-import com.example.rpg_map_pet.domain.repository.QuestRepository
+import com.example.rpg_map_pet.domain.quest.QuestRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -15,40 +15,45 @@ import javax.inject.Singleton
 class QuestRepositoryImpl @Inject constructor(
     private val questDao: QuestDao
 ) : QuestRepository {
-    
+
     override val allQuests: Flow<List<Quest>> = questDao.getAllQuests().map { entities ->
         entities.map { it.toDomain() }
     }
-    
+
     override val activeQuests: Flow<List<Quest>> = questDao.getActiveQuests().map { entities ->
         entities.map { it.toDomain() }
     }
-    
-    override suspend fun getQuestById(id: String): Quest? {
-        return questDao.getQuestById(id)?.toDomain()
+
+    override val completedQuests: Flow<List<Quest>> = questDao.getCompletedQuests().map { entities ->
+        entities.map { it.toDomain() }
     }
-    
-    override suspend fun saveQuest(quest: Quest) {
+
+    override suspend fun getQuestById(questId: String): Quest? {
+        return questDao.getQuestById(questId)?.toDomain()
+    }
+
+    override suspend fun createQuest(quest: Quest) {
         questDao.insertQuest(quest.toEntity())
     }
-    
-    override suspend fun saveQuests(quests: List<Quest>) {
-        questDao.insertQuests(quests.map { it.toEntity() })
+
+    override suspend fun updateQuest(quest: Quest) {
+        questDao.insertQuest(quest.toEntity())
     }
-    
+
     override suspend fun completeQuest(questId: String) {
         val quest = questDao.getQuestById(questId) ?: return
         questDao.updateQuest(quest.copy(isCompleted = true, completedAt = System.currentTimeMillis()))
     }
-    
+
     override suspend fun deleteQuest(questId: String) {
         questDao.deleteQuest(questId)
     }
-    
-    override suspend fun deleteAllQuests() {
-        questDao.deleteAllQuests()
+
+    override suspend fun generateQuestsForLocation(latitude: Double, longitude: Double): List<Quest> {
+        // TODO: Implement procedural quest generation based on location
+        return emptyList()
     }
-    
+
     // Mapper: Entity -> Domain
     private fun QuestEntity.toDomain(): Quest {
         return Quest(
@@ -63,7 +68,7 @@ class QuestRepositoryImpl @Inject constructor(
             completedAt = completedAt
         )
     }
-    
+
     // Mapper: Domain -> Entity
     private fun Quest.toEntity(): QuestEntity {
         return QuestEntity(
@@ -79,7 +84,7 @@ class QuestRepositoryImpl @Inject constructor(
             completedAt = completedAt
         )
     }
-    
+
     private fun EntityQuestType.toDomain(): DomainQuestType {
         return when (this) {
             EntityQuestType.DELIVERY -> DomainQuestType.DELIVERY
@@ -89,7 +94,7 @@ class QuestRepositoryImpl @Inject constructor(
             EntityQuestType.WAIT -> DomainQuestType.WAIT
         }
     }
-    
+
     private fun DomainQuestType.toEntity(): EntityQuestType {
         return when (this) {
             DomainQuestType.DELIVERY -> EntityQuestType.DELIVERY
