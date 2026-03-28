@@ -121,6 +121,9 @@ dependencies {
     implementation(libs.androidx.compose.runtime)
     ksp(libs.room.compiler)
 
+    // Coil for image loading
+    implementation("io.coil-kt:coil-compose:2.5.0")
+
     // Dependency Injection
     implementation(libs.hilt.android)
     implementation(libs.androidx.hilt.navigation.compose)

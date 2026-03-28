@@ -14,5 +14,7 @@
 .cxx
 local.properties
 
+README.md
+PROJECT_DOCUMENTATION.md
 # API keys (create gradle-api.properties for actual keys)
 gradle-api.properties
