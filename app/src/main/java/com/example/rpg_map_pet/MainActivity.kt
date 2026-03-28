@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -47,6 +48,8 @@ import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
 import com.example.rpg_map_pet.presentation.map.UserLocationState
 import com.example.rpg_map_pet.presentation.map.MapViewModel
+import com.example.rpg_map_pet.presentation.visited.VisitedLandmarksViewModel
+import com.example.rpg_map_pet.presentation.visited.VisitedLandmarksScreen
 import com.example.rpg_map_pet.ui.theme.RpgmappetTheme
 import com.yandex.mapkit.map.PlacemarkMapObject
 import dagger.hilt.android.AndroidEntryPoint
@@ -103,6 +106,40 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+fun MapScreenContent(
+    viewModel: MapViewModel,
+    uiState: MapUiState,
+    onNavigateToLandmark: (Landmark) -> Unit,
+    onNavigateToVisited: () -> Unit
+) {
+    val showEnableGpsDialog by viewModel.showEnableGpsDialog.collectAsState()
+    val context = LocalContext.current
+
+    if (showEnableGpsDialog) {
+        EnableGpsDialog(
+            onConfirm = {
+                viewModel.hideEnableGpsDialog()
+                context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            },
+            onDismiss = {
+                viewModel.hideEnableGpsDialog()
+            }
+        )
+    }
+
+    YandexMapView(
+        uiState = uiState,
+        viewModel = viewModel,
+        onNavigateToLandmark = onNavigateToLandmark,
+        onNavigateToVisited = {
+            // Сохраняем позицию камеры перед переходом
+            viewModel.saveCurrentCameraPosition()
+            onNavigateToVisited()
+        }
+    )
+}
+
+@Composable
 fun AppNavHost() {
     val navController = rememberNavController()
 
@@ -128,13 +165,16 @@ fun AppNavHost() {
                 )
             }
 
-            YandexMapView(
-                uiState = uiState,
+            MapScreenContent(
                 viewModel = viewModel,
+                uiState = uiState,
                 onNavigateToLandmark = { landmark ->
                     // Кодируем ID для безопасной передачи в роуте
                     val encodedId = java.net.URLEncoder.encode(landmark.id, "UTF-8")
                     navController.navigate("landmark/$encodedId")
+                },
+                onNavigateToVisited = {
+                    navController.navigate("visited")
                 }
             )
         }
@@ -160,6 +200,21 @@ fun AppNavHost() {
                     }
                 )
             }
+        }
+
+        composable("visited") {
+            val viewModel: VisitedLandmarksViewModel = hiltViewModel()
+            VisitedLandmarksScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                viewModel = viewModel,
+                onLandmarkClick = { landmark ->
+                    // Можно открыть детальную информацию о метке
+                    val encodedId = java.net.URLEncoder.encode(landmark.id, "UTF-8")
+                    navController.navigate("landmark/$encodedId")
+                }
+            )
         }
     }
 }
@@ -274,7 +329,8 @@ fun LandmarkDetailScreen(
 fun YandexMapView(
     uiState: MapUiState,
     viewModel: MapViewModel,
-    onNavigateToLandmark: (Landmark) -> Unit
+    onNavigateToLandmark: (Landmark) -> Unit,
+    onNavigateToVisited: () -> Unit
 ) {
     val context = LocalContext.current
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
@@ -292,6 +348,22 @@ fun YandexMapView(
 
     var hasCentered by rememberSaveable { mutableStateOf(false) }
     var hasRestoredCamera by rememberSaveable { mutableStateOf(false) }
+
+    // Восстановление позиции камеры после возврата с другого экрана
+    LaunchedEffect(Unit) {
+        val savedPos = viewModel.restoreCameraPosition()
+        if (savedPos != null && !hasRestoredCamera && hasCentered) {
+            map.move(
+                CameraPosition(
+                    Point(savedPos.latitude, savedPos.longitude),
+                    savedPos.zoom, 0f, 0f
+                ),
+                Animation(Animation.Type.SMOOTH, 0f),
+                null
+            )
+            hasRestoredCamera = true
+        }
+    }
 
     // Отслеживаем изменение камеры для загрузки меток
     DisposableEffect(map) {
@@ -425,6 +497,21 @@ fun YandexMapView(
             factory = { mapView },
             modifier = Modifier.fillMaxSize()
         )
+
+        // Кнопка перехода к посещённым меткам
+        FloatingActionButton(
+            onClick = onNavigateToVisited,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp),
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+        ) {
+            Icon(
+                imageVector = androidx.compose.material.icons.Icons.Default.CheckCircle,
+                contentDescription = "Посещённые места"
+            )
+        }
 
         // Счётчик меток в углу экрана
         Card(
