@@ -17,24 +17,27 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.rpg_map_pet.domain.model.Landmark
 import com.example.rpg_map_pet.presentation.map.MapUiState
 import com.yandex.mapkit.Animation
@@ -45,12 +48,10 @@ import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
 import com.example.rpg_map_pet.presentation.map.UserLocationState
 import com.example.rpg_map_pet.presentation.map.MapViewModel
-import com.example.rpg_map_pet.presentation.map.isLocationEnabled
 import com.example.rpg_map_pet.ui.theme.RpgmappetTheme
 import com.yandex.mapkit.map.PlacemarkMapObject
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.core.graphics.createBitmap
-import androidx.lifecycle.compose.LocalLifecycleOwner
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -58,12 +59,7 @@ class MainActivity : ComponentActivity() {
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
-        val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
-        
-        if (fineLocationGranted || coarseLocationGranted) {
-            checkLocationEnabled()
-        }
+        // Разрешения получены, инициализация происходит в AppNavHost через LaunchedEffect
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,7 +74,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MapScreen()
+                    AppNavHost()
                 }
             }
         }
@@ -94,7 +90,7 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.ACCESS_COARSE_LOCATION
         )
 
-        if (fineLocation != PackageManager.PERMISSION_GRANTED || 
+        if (fineLocation != PackageManager.PERMISSION_GRANTED ||
             coarseLocation != PackageManager.PERMISSION_GRANTED) {
             locationPermissionRequest.launch(
                 arrayOf(
@@ -102,71 +98,71 @@ class MainActivity : ComponentActivity() {
                     Manifest.permission.ACCESS_COARSE_LOCATION
                 )
             )
-        } else {
-            checkLocationEnabled()
         }
-    }
-
-    private fun checkLocationEnabled() {
-        val viewModel = ViewModelProvider(this)[MapViewModel::class.java]
-        if (!isLocationEnabled(this)) {
-            viewModel.showEnableGpsDialog()
-        } else {
-            viewModel.hideEnableGpsDialog()
-            viewModel.loadUserLocation()
-            viewModel.startLocationUpdates()
-        }
+        // Инициализация локации происходит в AppNavHost через LaunchedEffect
     }
 }
 
 @Composable
-fun MapScreen() {
-    val viewModel = ViewModelProvider(LocalViewModelStoreOwner.current!!)[MapViewModel::class.java]
-    val uiState by viewModel.uiState.collectAsState()
-    val showEnableGpsDialog by viewModel.showEnableGpsDialog.collectAsState()
-    val context = LocalContext.current
+fun AppNavHost() {
+    val navController = rememberNavController()
 
-    if (showEnableGpsDialog) {
-        EnableGpsDialog(
-            onConfirm = {
-                viewModel.hideEnableGpsDialog()
-                context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-            },
-            onDismiss = {
-                viewModel.hideEnableGpsDialog()
+    NavHost(
+        navController = navController,
+        startDestination = "map"
+    ) {
+        composable("map") {
+            val viewModel: MapViewModel = hiltViewModel()
+            val uiState by viewModel.uiState.collectAsState()
+            val showEnableGpsDialog by viewModel.showEnableGpsDialog.collectAsState()
+            val context = LocalContext.current
+
+            if (showEnableGpsDialog) {
+                EnableGpsDialog(
+                    onConfirm = {
+                        viewModel.hideEnableGpsDialog()
+                        context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                    },
+                    onDismiss = {
+                        viewModel.hideEnableGpsDialog()
+                    }
+                )
             }
-        )
-    }
 
-    // Диалог информации о достопримечательности
-    val selectedLandmark = uiState.selectedLandmark
-    if (uiState.showLandmarkInfo && selectedLandmark != null) {
-        LandmarkInfoDialog(
-            landmark = selectedLandmark,
-            onDismiss = {
-                viewModel.dismissLandmarkInfo()
-            },
-            onMarkAsVisited = {
-                viewModel.markAsVisited(selectedLandmark.id)
-                viewModel.dismissLandmarkInfo()
-            }
-        )
-    }
-    
-    // Логирование для отладки
-    LaunchedEffect(uiState.showLandmarkInfo, selectedLandmark) {
-        Log.d("MapScreen", "showLandmarkInfo: ${uiState.showLandmarkInfo}, selectedLandmark: ${selectedLandmark?.name}")
-    }
-
-    YandexMapView(
-        uiState = uiState,
-        onLandmarkClick = { landmark ->
-            viewModel.selectLandmark(landmark)
-        },
-        onCenterOnUser = {
-            viewModel.centerOnUserLocation()
+            YandexMapView(
+                uiState = uiState,
+                viewModel = viewModel,
+                onNavigateToLandmark = { landmark ->
+                    // Кодируем ID для безопасной передачи в роуте
+                    val encodedId = java.net.URLEncoder.encode(landmark.id, "UTF-8")
+                    navController.navigate("landmark/$encodedId")
+                }
+            )
         }
-    )
+
+        composable(
+            route = "landmark/{landmarkId}"
+        ) { backStackEntry ->
+            val landmarkId = backStackEntry.arguments?.getString("landmarkId")
+                ?.let { java.net.URLDecoder.decode(it, "UTF-8") }
+                ?: return@composable
+            val viewModel: MapViewModel = hiltViewModel()
+            val uiState by viewModel.uiState.collectAsState()
+
+            val landmark = uiState.landmarks.find { it.id == landmarkId }
+            if (landmark != null) {
+                LandmarkDetailScreen(
+                    landmark = landmark,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onMarkAsVisited = {
+                        viewModel.markAsVisited(landmarkId)
+                    }
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -191,89 +187,99 @@ fun EnableGpsDialog(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("DefaultLocale")
 @Composable
-fun LandmarkInfoDialog(
-    landmark: com.example.rpg_map_pet.domain.model.Landmark,
-    onDismiss: () -> Unit,
+fun LandmarkDetailScreen(
+    landmark: Landmark,
+    onNavigateBack: () -> Unit,
     onMarkAsVisited: () -> Unit
 ) {
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Информация о метке") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.ArrowBack,
+                            contentDescription = "Назад"
+                        )
+                    }
+                }
             )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp)
-                    .verticalScroll(rememberScrollState())
+            Text(
+                text = landmark.name,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (landmark.isVisited) {
+                AssistChip(
+                    onClick = { },
+                    label = { Text("✓ Посещено") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            Text(
+                text = landmark.description,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             ) {
-                Text(
-                    text = landmark.name,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                if (landmark.isVisited) {
-                    Badge(
-                        modifier = Modifier.padding(bottom = 12.dp),
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ) {
-                        Text("✓ Посещено")
-                    }
-                }
-
-                Text(
-                    text = landmark.description,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                Column(
+                    modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "Широта: ${String.format("%.6f", landmark.latitude)}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "📍 Широта: ${String.format("%.6f", landmark.latitude)}",
+                        style = MaterialTheme.typography.bodyMedium
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Долгота: ${String.format("%.6f", landmark.longitude)}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "📍 Долгота: ${String.format("%.6f", landmark.longitude)}",
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
+            }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Spacer(modifier = Modifier.height(24.dp))
+
+            if (!landmark.isVisited) {
+                Button(
+                    onClick = {
+                        onMarkAsVisited()
+                        onNavigateBack()
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (!landmark.isVisited) {
-                        Button(
-                            onClick = onMarkAsVisited,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Отметить как посещённое")
-                        }
-                    }
-                    
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Закрыть")
-                    }
+                    Text("Отметить как посещённое")
                 }
             }
         }
@@ -283,8 +289,8 @@ fun LandmarkInfoDialog(
 @Composable
 fun YandexMapView(
     uiState: MapUiState,
-    onLandmarkClick: (Landmark) -> Unit,
-    onCenterOnUser: () -> Unit
+    viewModel: MapViewModel,
+    onNavigateToLandmark: (Landmark) -> Unit
 ) {
     val context = LocalContext.current
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
@@ -300,7 +306,8 @@ fun YandexMapView(
         mapView.mapWindow.map.mapObjects.addCollection()
     }
 
-    var hasCentered by remember { mutableStateOf(false) }
+    var hasCentered by rememberSaveable { mutableStateOf(false) }
+    var hasRestoredCamera by rememberSaveable { mutableStateOf(false) }
 
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
@@ -326,7 +333,7 @@ fun YandexMapView(
         }
     }
 
-    // ✅ центрирование
+    // ✅ центрирование только при первом запуске
     LaunchedEffect(uiState.userLocation) {
         val loc = uiState.userLocation
         if (loc is UserLocationState.Success && !hasCentered) {
@@ -342,17 +349,26 @@ fun YandexMapView(
         }
     }
 
-    // ✅ обновление камеры
-    uiState.cameraPosition?.let { pos ->
-        LaunchedEffect(pos.latitude, pos.longitude) {
+    // ✅ Восстановление позиции камеры после возврата с экрана метки
+    LaunchedEffect(hasRestoredCamera, hasCentered) {
+        val savedPos = viewModel.restoreCameraPosition()
+        if (savedPos != null && !hasRestoredCamera && hasCentered) {
             map.move(
                 CameraPosition(
-                    Point(pos.latitude, pos.longitude),
-                    pos.zoom, 0f, 0f
+                    Point(savedPos.latitude, savedPos.longitude),
+                    savedPos.zoom, 0f, 0f
                 ),
-                Animation(Animation.Type.SMOOTH, 0.5f),
+                Animation(Animation.Type.SMOOTH, 0f),
                 null
             )
+            hasRestoredCamera = true
+        }
+    }
+
+    // Сброс флага при уходе с экрана (чтобы восстановить при следующем возврате)
+    DisposableEffect(Unit) {
+        onDispose {
+            hasRestoredCamera = false
         }
     }
 
@@ -367,7 +383,18 @@ fun YandexMapView(
             val listener = com.yandex.mapkit.map.MapObjectTapListener { mapObject, _ ->
                 val lm = mapObject.userData as? Landmark
                 Log.d("YandexMapView", "Tap on: ${lm?.name}")
-                lm?.let { onLandmarkClick(it) }
+                lm?.let { 
+                    // Сохраняем текущую позицию камеры перед переходом
+                    val cameraPos = map.cameraPosition
+                    viewModel.saveCameraPosition(
+                        cameraPos.target.latitude,
+                        cameraPos.target.longitude,
+                        cameraPos.zoom
+                    )
+                    // Сбрасываем флаг восстановления
+                    hasRestoredCamera = false
+                    onNavigateToLandmark(it)
+                }
                 true
             }
 
@@ -399,7 +426,19 @@ fun YandexMapView(
         )
 
         Button(
-            onClick = onCenterOnUser,
+            onClick = {
+                val loc = uiState.userLocation
+                if (loc is UserLocationState.Success) {
+                    map.move(
+                        CameraPosition(
+                            Point(loc.latitude, loc.longitude),
+                            16f, 0f, 0f
+                        ),
+                        Animation(Animation.Type.SMOOTH, 0.5f),
+                        null
+                    )
+                }
+            },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp),

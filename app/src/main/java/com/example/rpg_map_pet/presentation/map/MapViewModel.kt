@@ -1,7 +1,5 @@
 package com.example.rpg_map_pet.presentation.map
 
-import android.content.Context
-import android.location.LocationManager
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -39,12 +37,26 @@ class MapViewModel @Inject constructor(
     private val _showEnableGpsDialog = MutableStateFlow(false)
     val showEnableGpsDialog: StateFlow<Boolean> = _showEnableGpsDialog.asStateFlow()
 
+    // Сохраняем позицию камеры
+    private var savedCameraPosition: CameraPositionState? = null
+
+    fun saveCameraPosition(latitude: Double, longitude: Double, zoom: Float) {
+        savedCameraPosition = CameraPositionState(latitude, longitude, zoom)
+    }
+
+    fun restoreCameraPosition(): CameraPositionState? {
+        return savedCameraPosition
+    }
+
     companion object {
         private const val TAG = "MapViewModel"
     }
 
     init {
         observeLandmarks()
+        // Инициализация локации при создании ViewModel
+        loadUserLocation()
+        startLocationUpdates()
     }
 
     private fun observeLandmarks() {
@@ -67,11 +79,8 @@ class MapViewModel @Inject constructor(
                             longitude = location.longitude,
                             accuracy = location.accuracy,
                             speed = location.speed
-                        ),
-                        cameraPosition = CameraPositionState(
-                            latitude = location.latitude,
-                            longitude = location.longitude
                         )
+                        // Не меняем cameraPosition здесь - это вызывает сброс камеры
                     )
 
                     checkLandmarkAchievements(location)
@@ -121,18 +130,6 @@ class MapViewModel @Inject constructor(
                 zoom = zoom
             )
         )
-    }
-
-    fun centerOnUserLocation() {
-        val currentState = _uiState.value.userLocation
-        if (currentState is UserLocationState.Success) {
-            _uiState.value = _uiState.value.copy(
-                cameraPosition = CameraPositionState(
-                    latitude = currentState.latitude,
-                    longitude = currentState.longitude
-                )
-            )
-        }
     }
 
     fun selectLandmark(landmark: Landmark) {
@@ -203,13 +200,4 @@ class MapViewModel @Inject constructor(
 
         return (earthRadius * c).toFloat()
     }
-}
-
-/**
- * Checks if location services are enabled on the device.
- */
-fun isLocationEnabled(context: Context): Boolean {
-    val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-    return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
-            locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
 }
