@@ -37,6 +37,8 @@ import com.yandex.mapkit.map.CameraPosition
 import com.yandex.mapkit.map.PlacemarkMapObject
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
+import com.example.rpg_map_pet.presentation.map.cluster.Cluster
+import com.example.rpg_map_pet.presentation.map.cluster.ClusterRenderer
 
 @Composable
 fun MapScreen(
@@ -106,17 +108,52 @@ private fun YandexMapView(
     val tapListeners = remember {
         mutableStateListOf<com.yandex.mapkit.map.MapObjectTapListener>()
     }
-    val landmarksCollection = remember {
+
+    // Коллекция для кластеров
+    val clusterCollection = remember {
         mapView.mapWindow.map.mapObjects.addCollection()
+    }
+    val clusterRenderer = remember {
+        ClusterRenderer(clusterCollection)
+    }
+
+    var hasCentered by rememberSaveable { mutableStateOf(false) }
+    var hasRestoredCamera by rememberSaveable { mutableStateOf(false) }
+
+    // Обработчик тапа по кластеру
+    val onClusterTap: (Cluster) -> Unit = { cluster ->
+        if (cluster.isSingle) {
+            // Одиночная метка — переходим к деталям
+            val landmark = cluster.items.first().landmark
+            if (viewModel.restoreCameraPosition() == null) {
+                val cameraPos = map.cameraPosition
+                viewModel.saveCameraPosition(
+                    cameraPos.target.latitude,
+                    cameraPos.target.longitude,
+                    cameraPos.zoom
+                )
+            }
+            hasRestoredCamera = false
+            onNavigateToLandmark(landmark)
+        } else {
+            // Кластер — зумим на него
+            map.move(
+                com.yandex.mapkit.map.CameraPosition(
+                    cluster.center,
+                    map.cameraPosition.zoom + 2,
+                    0f,
+                    0f
+                ),
+                Animation(Animation.Type.SMOOTH, 0.5f),
+                null
+            )
+        }
     }
 
     // Коллекция для маркера местоположения пользователя
     val userLocationCollection = remember {
         mapView.mapWindow.map.mapObjects.addCollection()
     }
-
-    var hasCentered by rememberSaveable { mutableStateOf(false) }
-    var hasRestoredCamera by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(uiState.userLocation) {
         val loc = uiState.userLocation
@@ -232,49 +269,14 @@ private fun YandexMapView(
         }
     }
 
-    LaunchedEffect(uiState.landmarks) {
-        Log.d("YandexMapView", "🗺️ Updating landmarks: ${uiState.landmarks.size}")
-        landmarksCollection.clear()
+    LaunchedEffect(uiState.clusters) {
+        Log.d("YandexMapView", "🗺️ Updating clusters: ${uiState.clusters.size}")
+        clusterRenderer.render(uiState.clusters, onClusterTap)
         tapListeners.clear()
 
-        uiState.landmarks.forEach { landmark ->
-            val listener = com.yandex.mapkit.map.MapObjectTapListener { mapObject, _ ->
-                val lm = mapObject.userData as? Landmark
-                Log.d("YandexMapView", "👆 Tap on: ${lm?.name}")
-                lm?.let {
-                    if (viewModel.restoreCameraPosition() == null) {
-                        val cameraPos = map.cameraPosition
-                        viewModel.saveCameraPosition(
-                            cameraPos.target.latitude,
-                            cameraPos.target.longitude,
-                            cameraPos.zoom
-                        )
-                    }
-                    hasRestoredCamera = false
-                    onNavigateToLandmark(it)
-                }
-                true
-            }
-
-            val placemark = landmarksCollection.addPlacemark().apply {
-                geometry = Point(landmark.latitude, landmark.longitude)
-                userData = landmark
-
-                setIcon(
-                    ImageProvider.fromBitmap(
-                        createColoredDot(
-                            if (landmark.isVisited) Color.GREEN else Color.RED
-                        )
-                    )
-                )
-
-                addTapListener(listener)
-            }
-
-            tapListeners.add(listener)
-        }
-
-        Log.d("YandexMapView", "✨ All ${uiState.landmarks.size} landmarks added to map")
+        val clusterCount = uiState.clusters.count { !it.isSingle }
+        val singleCount = uiState.clusters.count { it.isSingle }
+        Log.d("YandexMapView", "✨ Rendered: $clusterCount clusters, $singleCount single markers")
     }
 
     Scaffold(
@@ -371,27 +373,6 @@ private fun YandexMapView(
             }
         }
     }
-}
-
-private fun createColoredDot(color: Int): Bitmap {
-    val size = 48
-    val bitmap = createBitmap(size, size)
-    val canvas = Canvas(bitmap)
-    val paint = Paint().apply {
-        this.color = color
-        isAntiAlias = true
-    }
-    canvas.drawCircle(size / 2f, size / 2f, size / 3f, paint)
-
-    val borderPaint = Paint().apply {
-        this.color = Color.WHITE
-        isAntiAlias = true
-        strokeWidth = 4f
-        style = Paint.Style.STROKE
-    }
-    canvas.drawCircle(size / 2f, size / 2f, size / 3f, borderPaint)
-
-    return bitmap
 }
 
 /**

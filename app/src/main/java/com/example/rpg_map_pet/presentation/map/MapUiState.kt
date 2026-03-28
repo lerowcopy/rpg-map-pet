@@ -1,6 +1,7 @@
 package com.example.rpg_map_pet.presentation.map
 
 import com.example.rpg_map_pet.domain.model.Landmark
+import com.example.rpg_map_pet.presentation.map.cluster.Cluster
 import com.yandex.mapkit.geometry.Point
 
 /**
@@ -12,6 +13,7 @@ data class MapUiState(
     val userLocationPoint: Point? = null,
     val cameraPosition: CameraPositionState? = null,
     val landmarks: List<Landmark> = emptyList(),
+    val clusters: List<Cluster> = emptyList(),
     val selectedLandmark: Landmark? = null,
     val showLandmarkInfo: Boolean = false
 )

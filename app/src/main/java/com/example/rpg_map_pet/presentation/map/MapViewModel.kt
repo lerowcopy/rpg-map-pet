@@ -13,6 +13,11 @@ import com.example.rpg_map_pet.domain.location.GetCurrentLocation
 import com.example.rpg_map_pet.domain.location.GetLocationUpdates
 import com.example.rpg_map_pet.domain.model.Landmark
 import com.example.rpg_map_pet.domain.model.UserLocation
+import com.example.rpg_map_pet.presentation.map.cluster.Cluster
+import com.example.rpg_map_pet.presentation.map.cluster.ClusterAlgorithm
+import com.example.rpg_map_pet.presentation.map.cluster.ClusterConfig
+import com.example.rpg_map_pet.presentation.map.cluster.ClusterItem
+import com.example.rpg_map_pet.presentation.map.cluster.GridBasedClusterAlgorithm
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -61,6 +66,11 @@ class MapViewModel @Inject constructor(
 
     // Job для отслеживания подписки на фотографии метки
     private var loadPhotosJob: Job? = null
+
+    // Алгоритм кластеризации
+    private val clusterAlgorithm: ClusterAlgorithm = GridBasedClusterAlgorithm(
+        ClusterConfig(minZoomForClustering = 12, gridSize = 60, minClusterSize = 2)
+    )
 
     // Сохраняем позицию камеры
     private var savedCameraPosition: CameraPositionState? = null
@@ -136,10 +146,24 @@ class MapViewModel @Inject constructor(
                     val names = landmarks.take(5).joinToString(", ") { it.name }
                     Log.d(TAG, "🏛️ First 5: $names${if (landmarks.size > 5) "..." else ""}")
                 }
-                
-                _uiState.value = _uiState.value.copy(landmarks = landmarks)
+
+                // Кластеризуем метки
+                val clusters = clusterLandmarks(landmarks, cameraPos.zoom.toInt())
+
+                _uiState.value = _uiState.value.copy(
+                    landmarks = landmarks,
+                    clusters = clusters
+                )
             }.launchIn(viewModelScope)
         }
+    }
+
+    /**
+     * Скластеризовать метки.
+     */
+    private fun clusterLandmarks(landmarks: List<Landmark>, zoom: Int): List<Cluster> {
+        val items = landmarks.map { ClusterItem(it) }
+        return clusterAlgorithm.cluster(items, zoom)
     }
 
     private fun observeLandmarks() {
@@ -147,7 +171,12 @@ class MapViewModel @Inject constructor(
         // Затем optimizeCameraPosition() загрузит только видимые
         getLandmarks()
             .onEach { landmarks ->
-                _uiState.value = _uiState.value.copy(landmarks = landmarks)
+                // Кластеризуем метки (zoom 15 по умолчанию)
+                val clusters = clusterLandmarks(landmarks, 15)
+                _uiState.value = _uiState.value.copy(
+                    landmarks = landmarks,
+                    clusters = clusters
+                )
             }
             .launchIn(viewModelScope)
     }
