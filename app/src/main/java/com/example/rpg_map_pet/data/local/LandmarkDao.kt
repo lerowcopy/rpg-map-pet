@@ -18,6 +18,44 @@ interface LandmarkDao {
     @Query("SELECT * FROM landmarks WHERE isCompleted = 1")
     fun getCompletedLandmarks(): Flow<List<LandmarkEntity>>
 
+    /**
+     * Загрузка меток в прямоугольной области (bounding box).
+     * Используется для загрузки меток в видимой области карты.
+     */
+    @Query("""
+        SELECT * FROM landmarks 
+        WHERE latitude >= :minLatitude 
+          AND latitude <= :maxLatitude 
+          AND longitude >= :minLongitude 
+          AND longitude <= :maxLongitude
+    """)
+    fun getLandmarksInBoundingBox(
+        minLatitude: Double,
+        maxLatitude: Double,
+        minLongitude: Double,
+        maxLongitude: Double
+    ): Flow<List<LandmarkEntity>>
+
+    /**
+     * Загрузка меток в радиусе от точки.
+     * Использует упрощённую формулу (без Haversine) для производительности.
+     */
+    @Query("""
+        SELECT * FROM landmarks 
+        WHERE (
+            6371000 * acos(
+                cos(radians(:latitude)) * cos(radians(latitude)) *
+                cos(radians(longitude) - radians(:longitude)) +
+                sin(radians(:latitude)) * sin(radians(latitude))
+            )
+        ) <= :radiusMeters
+    """)
+    fun getLandmarksInRadius(
+        latitude: Double,
+        longitude: Double,
+        radiusMeters: Float
+    ): Flow<List<LandmarkEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLandmark(landmark: LandmarkEntity)
 

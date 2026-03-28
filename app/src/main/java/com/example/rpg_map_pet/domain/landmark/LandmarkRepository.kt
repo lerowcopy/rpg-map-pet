@@ -17,6 +17,25 @@ interface LandmarkRepository {
     fun isUserNearLandmark(userLat: Double, userLng: Double, landmark: Landmark): Boolean
     suspend fun importFromGeoJson(): ImportResult
     suspend fun getLandmarksCount(): Int
+
+    /**
+     * Загрузка меток в прямоугольной области (bounding box).
+     */
+    fun getLandmarksInBoundingBox(
+        minLatitude: Double,
+        maxLatitude: Double,
+        minLongitude: Double,
+        maxLongitude: Double
+    ): Flow<List<Landmark>>
+
+    /**
+     * Загрузка меток в радиусе от точки.
+     */
+    fun getLandmarksInRadius(
+        latitude: Double,
+        longitude: Double,
+        radiusMeters: Float
+    ): Flow<List<Landmark>>
 }
 
 sealed class ImportResult {

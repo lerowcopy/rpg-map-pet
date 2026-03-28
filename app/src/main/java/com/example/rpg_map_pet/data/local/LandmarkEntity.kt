@@ -1,12 +1,20 @@
 package com.example.rpg_map_pet.data.local
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
  * Сущность точки интереса (landmark) из GeoJSON
  */
-@Entity(tableName = "landmarks")
+@Entity(
+    tableName = "landmarks",
+    indices = [
+        Index(value = ["latitude"]),
+        Index(value = ["longitude"]),
+        Index(value = ["latitude", "longitude"])
+    ]
+)
 data class LandmarkEntity(
     @PrimaryKey val id: String,           // ID из OSM (node/123456)
     val name: String,                     // Название места

@@ -8,6 +8,8 @@ import com.example.rpg_map_pet.domain.landmark.GetCompletedLandmarks
 import com.example.rpg_map_pet.domain.landmark.GetLandmarkById
 import com.example.rpg_map_pet.domain.landmark.GetLandmarks
 import com.example.rpg_map_pet.domain.landmark.GetLandmarksCount
+import com.example.rpg_map_pet.domain.landmark.GetLandmarksInBoundingBox
+import com.example.rpg_map_pet.domain.landmark.GetLandmarksInRadius
 import com.example.rpg_map_pet.domain.landmark.ImportLandmarksUseCase
 import com.example.rpg_map_pet.domain.landmark.IsUserNearLandmark
 import com.example.rpg_map_pet.domain.landmark.LandmarkRepository
@@ -88,6 +90,18 @@ abstract class LandmarkModule {
         @Singleton
         fun provideGetLandmarksCount(repository: LandmarkRepository): GetLandmarksCount {
             return GetLandmarksCount(repository)
+        }
+
+        @Provides
+        @Singleton
+        fun provideGetLandmarksInBoundingBox(repository: LandmarkRepository): GetLandmarksInBoundingBox {
+            return GetLandmarksInBoundingBox(repository)
+        }
+
+        @Provides
+        @Singleton
+        fun provideGetLandmarksInRadius(repository: LandmarkRepository): GetLandmarksInRadius {
+            return GetLandmarksInRadius(repository)
         }
 
         @Provides

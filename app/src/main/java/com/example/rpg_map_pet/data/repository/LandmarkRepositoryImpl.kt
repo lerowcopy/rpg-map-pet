@@ -35,6 +35,30 @@ class LandmarkRepositoryImpl @Inject constructor(
             entities.map { it.toDomainModel() }
         }
 
+    override fun getLandmarksInBoundingBox(
+        minLatitude: Double,
+        maxLatitude: Double,
+        minLongitude: Double,
+        maxLongitude: Double
+    ): Flow<List<Landmark>> =
+        landmarkDao.getLandmarksInBoundingBox(
+            minLatitude,
+            maxLatitude,
+            minLongitude,
+            maxLongitude
+        ).map { entities ->
+            entities.map { it.toDomainModel() }
+        }
+
+    override fun getLandmarksInRadius(
+        latitude: Double,
+        longitude: Double,
+        radiusMeters: Float
+    ): Flow<List<Landmark>> =
+        landmarkDao.getLandmarksInRadius(latitude, longitude, radiusMeters).map { entities ->
+            entities.map { it.toDomainModel() }
+        }
+
     override suspend fun getLandmarkById(landmarkId: String): Landmark? {
         return landmarkDao.getLandmarkById(landmarkId)?.toDomainModel()
     }

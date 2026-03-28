@@ -309,6 +309,25 @@ fun YandexMapView(
     var hasCentered by rememberSaveable { mutableStateOf(false) }
     var hasRestoredCamera by rememberSaveable { mutableStateOf(false) }
 
+    // Отслеживаем изменение камеры для загрузки меток
+    DisposableEffect(map) {
+        val cameraListener = com.yandex.mapkit.map.CameraListener { _, cameraPosition, _, _ ->
+            // Отправляем позицию камеры в ViewModel для debounce загрузки
+            // cameraPosition.target - это Point с координатами центра
+            viewModel.updateCameraPositionForLoading(
+                cameraPosition.target.latitude,
+                cameraPosition.target.longitude,
+                cameraPosition.zoom
+            )
+        }
+
+        map.addCameraListener(cameraListener)
+
+        onDispose {
+            map.removeCameraListener(cameraListener)
+        }
+    }
+
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {

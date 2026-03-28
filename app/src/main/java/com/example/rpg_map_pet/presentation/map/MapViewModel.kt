@@ -5,17 +5,23 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.rpg_map_pet.core.result.Result
 import com.example.rpg_map_pet.domain.landmark.GetLandmarks
+import com.example.rpg_map_pet.domain.landmark.GetLandmarksInBoundingBox
+import com.example.rpg_map_pet.domain.landmark.GetLandmarksInRadius
 import com.example.rpg_map_pet.domain.landmark.MarkLandmarkAsVisited
 import com.example.rpg_map_pet.domain.location.GetCurrentLocation
 import com.example.rpg_map_pet.domain.location.GetLocationUpdates
 import com.example.rpg_map_pet.domain.model.Landmark
 import com.example.rpg_map_pet.domain.model.UserLocation
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -28,6 +34,8 @@ class MapViewModel @Inject constructor(
     private val getCurrentLocation: GetCurrentLocation,
     private val getLocationUpdates: GetLocationUpdates,
     private val getLandmarks: GetLandmarks,
+    private val getLandmarksInBoundingBox: GetLandmarksInBoundingBox,
+    private val getLandmarksInRadius: GetLandmarksInRadius,
     private val markLandmarkAsVisited: MarkLandmarkAsVisited
 ) : ViewModel() {
 
@@ -40,6 +48,28 @@ class MapViewModel @Inject constructor(
     // Сохраняем позицию камеры
     private var savedCameraPosition: CameraPositionState? = null
 
+    // Channel для отслеживания позиции камеры с debounce
+    private val cameraPositionChannel = Channel<CameraPositionState>(Channel.CONFLATED)
+
+    // Загружаем метки при изменении камеры с debounce 500ms
+    init {
+        observeLandmarks()
+        observeCameraPosition()
+        // Инициализация локации при создании ViewModel
+        loadUserLocation()
+        startLocationUpdates()
+    }
+
+    private fun observeCameraPosition() {
+        cameraPositionChannel
+            .receiveAsFlow()
+            .debounce(500) // Ждём 500ms после последнего перемещения камеры
+            .onEach { cameraPos ->
+                loadLandmarksForCamera(cameraPos)
+            }
+            .launchIn(viewModelScope)
+    }
+
     fun saveCameraPosition(latitude: Double, longitude: Double, zoom: Float) {
         savedCameraPosition = CameraPositionState(latitude, longitude, zoom)
     }
@@ -48,23 +78,49 @@ class MapViewModel @Inject constructor(
         return savedCameraPosition
     }
 
-    companion object {
-        private const val TAG = "MapViewModel"
+    fun updateCameraPositionForLoading(latitude: Double, longitude: Double, zoom: Float) {
+        viewModelScope.launch {
+            cameraPositionChannel.send(CameraPositionState(latitude, longitude, zoom))
+        }
     }
 
-    init {
-        observeLandmarks()
-        // Инициализация локации при создании ViewModel
-        loadUserLocation()
-        startLocationUpdates()
+    private fun loadLandmarksForCamera(cameraPos: CameraPositionState) {
+        // Вычисляем bounding box на основе зума
+        // Чем меньше зум, тем больше область
+        // 1 градус широты ≈ 111 км
+        val zoomFactor = Math.pow(2.0, 17 - cameraPos.zoom.toDouble()) // Адаптивный коэффициент
+        val latDelta = (0.005 * zoomFactor) * 1.2 // +20% запас
+        val lngDelta = (0.005 * zoomFactor) * 1.2
+
+        val minLat = cameraPos.latitude - latDelta
+        val maxLat = cameraPos.latitude + latDelta
+        val minLng = cameraPos.longitude - lngDelta
+        val maxLng = cameraPos.longitude + lngDelta
+
+        Log.d(TAG, "Loading landmarks for bbox: [$minLat, $maxLat] x [$minLng, $maxLng]")
+
+        viewModelScope.launch {
+            getLandmarksInBoundingBox(
+                GetLandmarksInBoundingBox.Params(minLat, maxLat, minLng, maxLng)
+            ).onEach { landmarks ->
+                Log.d(TAG, "Loaded ${landmarks.size} landmarks")
+                _uiState.value = _uiState.value.copy(landmarks = landmarks)
+            }.launchIn(viewModelScope)
+        }
     }
 
     private fun observeLandmarks() {
+        // При первом запуске загружаем все метки (из кэша Room)
+        // Затем optimizeCameraPosition() загрузит только видимые
         getLandmarks()
             .onEach { landmarks ->
                 _uiState.value = _uiState.value.copy(landmarks = landmarks)
             }
             .launchIn(viewModelScope)
+    }
+
+    companion object {
+        private const val TAG = "MapViewModel"
     }
 
     fun loadUserLocation() {
