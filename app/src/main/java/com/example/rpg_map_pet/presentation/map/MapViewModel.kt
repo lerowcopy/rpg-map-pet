@@ -7,6 +7,7 @@ import com.example.rpg_map_pet.core.result.Result
 import com.example.rpg_map_pet.domain.landmark.GetLandmarks
 import com.example.rpg_map_pet.domain.landmark.GetLandmarksInBoundingBox
 import com.example.rpg_map_pet.domain.landmark.GetLandmarksInRadius
+import com.example.rpg_map_pet.domain.landmark.LandmarkRepository
 import com.example.rpg_map_pet.domain.landmark.MarkLandmarkAsVisited
 import com.example.rpg_map_pet.domain.location.GetCurrentLocation
 import com.example.rpg_map_pet.domain.location.GetLocationUpdates
@@ -21,8 +22,17 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+/**
+ * Модель фотографии метки для UI
+ */
+data class LandmarkPhoto(
+    val id: Long,
+    val path: String
+)
 
 /**
  * ViewModel for the map screen.
@@ -35,7 +45,8 @@ class MapViewModel @Inject constructor(
     private val getLandmarks: GetLandmarks,
     private val getLandmarksInBoundingBox: GetLandmarksInBoundingBox,
     private val getLandmarksInRadius: GetLandmarksInRadius,
-    private val markLandmarkAsVisited: MarkLandmarkAsVisited
+    private val markLandmarkAsVisited: MarkLandmarkAsVisited,
+    private val landmarkRepository: LandmarkRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MapUiState())
@@ -43,6 +54,13 @@ class MapViewModel @Inject constructor(
 
     private val _showEnableGpsDialog = MutableStateFlow(false)
     val showEnableGpsDialog: StateFlow<Boolean> = _showEnableGpsDialog.asStateFlow()
+
+    // Фотографии текущей метки
+    private val _landmarkPhotos = MutableStateFlow<List<LandmarkPhoto>>(emptyList())
+    val landmarkPhotos: StateFlow<List<LandmarkPhoto>> = _landmarkPhotos.asStateFlow()
+
+    // Job для отслеживания подписки на фотографии метки
+    private var loadPhotosJob: Job? = null
 
     // Сохраняем позицию камеры
     private var savedCameraPosition: CameraPositionState? = null
@@ -75,6 +93,10 @@ class MapViewModel @Inject constructor(
 
     fun restoreCameraPosition(): CameraPositionState? {
         return savedCameraPosition
+    }
+
+    fun cameraPositionRestored() {
+        savedCameraPosition = null
     }
 
     /**
@@ -278,5 +300,41 @@ class MapViewModel @Inject constructor(
         val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 
         return (earthRadius * c).toFloat()
+    }
+
+    /**
+     * Загрузить фотографии для конкретной метки.
+     * Flow автоматически обновляется при изменении данных в БД.
+     */
+    fun loadLandmarkPhotos(landmarkId: String) {
+        loadPhotosJob?.cancel() // Отменяем предыдущую подписку
+        loadPhotosJob = landmarkRepository.getLandmarkPhotosWithIds(landmarkId)
+            .onEach { photos ->
+                Log.d(TAG, "📸 Photos updated: ${photos.size} photos")
+                photos.forEach { Log.d(TAG, "   - Photo ${it.id}: ${it.photoPath}") }
+                _landmarkPhotos.value = photos.map { LandmarkPhoto(it.id, it.photoPath) }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    /**
+     * Добавить фотографию к метке.
+     * Flow автоматически обновится после вставки.
+     */
+    fun addLandmarkPhoto(landmarkId: String, photoPath: String) {
+        viewModelScope.launch {
+            Log.d(TAG, "📸 Adding photo: $photoPath")
+            landmarkRepository.addLandmarkPhoto(landmarkId, photoPath)
+            Log.d(TAG, "✅ Photo added, Room should update Flow")
+        }
+    }
+
+    /**
+     * Удалить фотографию метки.
+     */
+    fun deleteLandmarkPhoto(photoId: Long) {
+        viewModelScope.launch {
+            landmarkRepository.deleteLandmarkPhoto(photoId)
+        }
     }
 }
