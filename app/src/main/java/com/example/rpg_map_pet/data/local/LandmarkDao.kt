@@ -93,11 +93,11 @@ interface LandmarkDao {
     @Update
     suspend fun updateLandmark(landmark: LandmarkEntity)
 
-    @Query("UPDATE landmarks SET isCompleted = 1 WHERE id = :landmarkId")
-    suspend fun markAsCompleted(landmarkId: String)
+    @Query("UPDATE landmarks SET isCompleted = 1, completedAt = :timestamp WHERE id = :landmarkId")
+    suspend fun markAsCompleted(landmarkId: String, timestamp: Long = System.currentTimeMillis())
 
-    @Query("DELETE FROM landmarks WHERE id = :landmarkId")
-    suspend fun deleteLandmark(landmarkId: String)
+    @Query("UPDATE landmarks SET isCompleted = 0, completedAt = NULL WHERE id = :landmarkId")
+    suspend fun markAsNotCompleted(landmarkId: String)
 
     @Query("DELETE FROM landmarks")
     suspend fun deleteAllLandmarks()

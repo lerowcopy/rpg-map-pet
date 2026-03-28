@@ -64,14 +64,11 @@ class LandmarkRepositoryImpl @Inject constructor(
     }
 
     override suspend fun markAsVisited(landmarkId: String) {
-        landmarkDao.markAsCompleted(landmarkId)
+        landmarkDao.markAsCompleted(landmarkId, System.currentTimeMillis())
     }
 
     override suspend fun markAsNotVisited(landmarkId: String) {
-        val landmark = landmarkDao.getLandmarkById(landmarkId)
-        if (landmark != null) {
-            landmarkDao.updateLandmark(landmark.copy(isCompleted = false))
-        }
+        landmarkDao.markAsNotCompleted(landmarkId)
     }
 
     override fun isUserNearLandmark(userLat: Double, userLng: Double, landmark: Landmark): Boolean {
@@ -100,7 +97,7 @@ class LandmarkRepositoryImpl @Inject constructor(
             longitude = longitude,
             radius = 50f, // Default radius for landmarks
             isVisited = isCompleted,
-            visitedAt = if (isCompleted) System.currentTimeMillis() else null
+            visitedAt = completedAt
         )
     }
 }

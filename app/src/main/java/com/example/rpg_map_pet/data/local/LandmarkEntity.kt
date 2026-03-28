@@ -23,5 +23,6 @@ data class LandmarkEntity(
     val type: String,                     // Тип места (monument, memorial, attraction и т.д.)
     val description: String = "",         // Описание
     val isCompleted: Boolean = false,     // Посещено ли игроком
+    val completedAt: Long? = null,        // Время посещения (timestamp)
     val xpReward: Int = 100               // Награда в XP
 )
