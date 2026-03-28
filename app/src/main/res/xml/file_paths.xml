@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Доступ к файлам во внутреннем хранилище приложения -->
+    <files-path
+        name="landmark_photos"
+        path="landmark_photos/" />
+</paths>
