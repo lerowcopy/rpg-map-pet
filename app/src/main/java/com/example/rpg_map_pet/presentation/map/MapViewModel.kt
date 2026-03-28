@@ -77,6 +77,14 @@ class MapViewModel @Inject constructor(
         return savedCameraPosition
     }
 
+    /**
+     * Сохраняет текущую позицию камеры (для использования при навигации).
+     */
+    fun saveCurrentCameraPosition() {
+        // Позиция уже сохраняется через updateCameraPositionForLoading
+        // Этот метод для явного сохранения перед навигацией
+    }
+
     fun updateCameraPositionForLoading(latitude: Double, longitude: Double, zoom: Float) {
         viewModelScope.launch {
             cameraPositionChannel.send(CameraPositionState(latitude, longitude, zoom))
