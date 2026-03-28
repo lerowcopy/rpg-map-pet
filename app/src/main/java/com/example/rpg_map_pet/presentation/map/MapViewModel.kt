@@ -14,7 +14,6 @@ import com.example.rpg_map_pet.domain.model.Landmark
 import com.example.rpg_map_pet.domain.model.UserLocation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -108,6 +107,7 @@ class MapViewModel @Inject constructor(
                     val names = landmarks.take(5).joinToString(", ") { it.name }
                     Log.d(TAG, "🏛️ First 5: $names${if (landmarks.size > 5) "..." else ""}")
                 }
+                
                 _uiState.value = _uiState.value.copy(landmarks = landmarks)
             }.launchIn(viewModelScope)
         }
@@ -157,10 +157,22 @@ class MapViewModel @Inject constructor(
     private fun checkLandmarkAchievements(location: UserLocation) {
         viewModelScope.launch {
             val currentState = _uiState.value
+            Log.d(TAG, "🎯 Checking ${currentState.landmarks.size} landmarks for achievements")
+            
             currentState.landmarks.forEach { landmark ->
-                if (!landmark.isVisited &&
-                    isUserNearLandmark(location, landmark)) {
-                    markLandmarkAsVisited(landmark.id)
+                if (!landmark.isVisited) {
+                    val distance = calculateDistance(
+                        location.latitude,
+                        location.longitude,
+                        landmark.latitude,
+                        landmark.longitude
+                    )
+                    Log.d(TAG, "📍 ${landmark.name}: ${String.format("%.1f", distance)}m (radius: ${landmark.radius}m)")
+                    
+                    if (distance <= landmark.radius) {
+                        Log.d(TAG, "✅ ACHIEVEMENT! Visited: ${landmark.name}")
+                        markLandmarkAsVisited(landmark.id)
+                    }
                 }
             }
         }

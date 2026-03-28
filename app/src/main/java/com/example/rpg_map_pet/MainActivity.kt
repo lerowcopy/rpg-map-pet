@@ -20,7 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -225,21 +224,6 @@ fun LandmarkDetailScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (landmark.isVisited) {
-                AssistChip(
-                    onClick = { },
-                    label = { Text("✓ Посещено") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
             Text(
                 text = landmark.description,
                 style = MaterialTheme.typography.bodyLarge,
@@ -391,6 +375,7 @@ fun YandexMapView(
         }
     }
 
+    // Отображение меток
     LaunchedEffect(uiState.landmarks) {
         Log.d("YandexMapView", "🗺️ Updating landmarks: ${uiState.landmarks.size}")
 
@@ -398,19 +383,16 @@ fun YandexMapView(
         tapListeners.clear()
 
         uiState.landmarks.forEach { landmark ->
-
             val listener = com.yandex.mapkit.map.MapObjectTapListener { mapObject, _ ->
                 val lm = mapObject.userData as? Landmark
                 Log.d("YandexMapView", "👆 Tap on: ${lm?.name}")
-                lm?.let { 
-                    // Сохраняем текущую позицию камеры перед переходом
+                lm?.let {
                     val cameraPos = map.cameraPosition
                     viewModel.saveCameraPosition(
                         cameraPos.target.latitude,
                         cameraPos.target.longitude,
                         cameraPos.zoom
                     )
-                    // Сбрасываем флаг восстановления
                     hasRestoredCamera = false
                     onNavigateToLandmark(it)
                 }

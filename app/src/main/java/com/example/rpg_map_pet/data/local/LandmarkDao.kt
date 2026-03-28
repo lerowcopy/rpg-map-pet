@@ -9,18 +9,39 @@ interface LandmarkDao {
     @Query("SELECT * FROM landmarks")
     fun getAllLandmarks(): Flow<List<LandmarkEntity>>
 
+    @Query("""
+        SELECT * FROM landmarks 
+        WHERE name != '' 
+          AND name != 'Без названия'
+          AND name != 'без названия'
+    """)
+    fun getFilteredLandmarks(): Flow<List<LandmarkEntity>>
+
     @Query("SELECT * FROM landmarks WHERE id = :landmarkId")
     suspend fun getLandmarkById(landmarkId: String): LandmarkEntity?
 
-    @Query("SELECT * FROM landmarks WHERE isCompleted = 0")
+    @Query("""
+        SELECT * FROM landmarks 
+        WHERE isCompleted = 0 
+          AND name != '' 
+          AND name != 'Без названия'
+          AND name != 'без названия'
+    """)
     fun getActiveLandmarks(): Flow<List<LandmarkEntity>>
 
-    @Query("SELECT * FROM landmarks WHERE isCompleted = 1")
+    @Query("""
+        SELECT * FROM landmarks 
+        WHERE isCompleted = 1 
+          AND name != '' 
+          AND name != 'Без названия'
+          AND name != 'без названия'
+    """)
     fun getCompletedLandmarks(): Flow<List<LandmarkEntity>>
 
     /**
      * Загрузка меток в прямоугольной области (bounding box).
      * Используется для загрузки меток в видимой области карты.
+     * Фильтрует метки без названия.
      */
     @Query("""
         SELECT * FROM landmarks 
@@ -28,6 +49,9 @@ interface LandmarkDao {
           AND latitude <= :maxLatitude 
           AND longitude >= :minLongitude 
           AND longitude <= :maxLongitude
+          AND name != '' 
+          AND name != 'Без названия'
+          AND name != 'без названия'
     """)
     fun getLandmarksInBoundingBox(
         minLatitude: Double,
@@ -39,6 +63,7 @@ interface LandmarkDao {
     /**
      * Загрузка меток в радиусе от точки.
      * Использует упрощённую формулу (без Haversine) для производительности.
+     * Фильтрует метки без названия.
      */
     @Query("""
         SELECT * FROM landmarks 
@@ -49,6 +74,9 @@ interface LandmarkDao {
                 sin(radians(:latitude)) * sin(radians(latitude))
             )
         ) <= :radiusMeters
+        AND name != '' 
+        AND name != 'Без названия'
+        AND name != 'без названия'
     """)
     fun getLandmarksInRadius(
         latitude: Double,
