@@ -8,5 +8,6 @@ data class Landmark(
     val longitude: Double,
     val radius: Float = 50f,
     val isVisited: Boolean = false,
-    val visitedAt: Long? = null
+    val visitedAt: Long? = null,
+    val photos: List<String> = emptyList()
 )

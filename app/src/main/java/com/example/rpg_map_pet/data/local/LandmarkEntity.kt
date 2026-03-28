@@ -3,6 +3,7 @@ package com.example.rpg_map_pet.data.local
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.example.rpg_map_pet.domain.model.Landmark
 
 /**
  * Сущность точки интереса (landmark) из GeoJSON
@@ -26,3 +27,31 @@ data class LandmarkEntity(
     val completedAt: Long? = null,        // Время посещения (timestamp)
     val xpReward: Int = 100               // Награда в XP
 )
+
+fun LandmarkEntity.toDomainModel(photos: List<String> = emptyList()): Landmark {
+    return Landmark(
+        id = id,
+        name = name,
+        description = description,
+        latitude = latitude,
+        longitude = longitude,
+        radius = 50f,
+        isVisited = isCompleted,
+        visitedAt = completedAt,
+        photos = photos
+    )
+}
+
+fun Landmark.toEntity(): LandmarkEntity {
+    return LandmarkEntity(
+        id = id,
+        name = name,
+        description = description,
+        latitude = latitude,
+        longitude = longitude,
+        type = "monument",
+        isCompleted = isVisited,
+        completedAt = visitedAt,
+        xpReward = 100
+    )
+}
