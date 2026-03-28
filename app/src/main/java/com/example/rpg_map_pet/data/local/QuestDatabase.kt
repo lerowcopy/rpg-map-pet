@@ -24,7 +24,7 @@ abstract class QuestDatabase : RoomDatabase() {
                     QuestDatabase::class.java,
                     "quest_database"
                 )
-                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigrationFrom(3)
                     .build()
                 INSTANCE = instance
                 instance
