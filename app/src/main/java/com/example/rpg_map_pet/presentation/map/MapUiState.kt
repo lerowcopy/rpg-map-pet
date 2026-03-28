@@ -1,6 +1,7 @@
 package com.example.rpg_map_pet.presentation.map
 
 import com.example.rpg_map_pet.domain.model.Landmark
+import com.yandex.mapkit.geometry.Point
 
 /**
  * UI State for the map screen.
@@ -8,6 +9,7 @@ import com.example.rpg_map_pet.domain.model.Landmark
  */
 data class MapUiState(
     val userLocation: UserLocationState = UserLocationState.Loading,
+    val userLocationPoint: Point? = null,
     val cameraPosition: CameraPositionState? = null,
     val landmarks: List<Landmark> = emptyList(),
     val selectedLandmark: Landmark? = null,

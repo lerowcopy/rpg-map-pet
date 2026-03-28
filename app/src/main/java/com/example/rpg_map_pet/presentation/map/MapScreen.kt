@@ -110,6 +110,11 @@ private fun YandexMapView(
         mapView.mapWindow.map.mapObjects.addCollection()
     }
 
+    // Коллекция для маркера местоположения пользователя
+    val userLocationCollection = remember {
+        mapView.mapWindow.map.mapObjects.addCollection()
+    }
+
     var hasCentered by rememberSaveable { mutableStateOf(false) }
     var hasRestoredCamera by rememberSaveable { mutableStateOf(false) }
 
@@ -126,6 +131,18 @@ private fun YandexMapView(
             )
             hasCentered = true
             Log.d("YandexMapView", "🎯 Centered on user location")
+        }
+    }
+
+    // Обновление маркера местоположения пользователя
+    LaunchedEffect(uiState.userLocationPoint) {
+        userLocationCollection.clear()
+        uiState.userLocationPoint?.let { point ->
+            userLocationCollection.addPlacemark().apply {
+                geometry = point
+                setIcon(ImageProvider.fromBitmap(createUserLocationMarker()))
+            }
+            Log.d("YandexMapView", "📍 User location marker updated: ${point.latitude}, ${point.longitude}")
         }
     }
 
@@ -373,6 +390,33 @@ private fun createColoredDot(color: Int): Bitmap {
         style = Paint.Style.STROKE
     }
     canvas.drawCircle(size / 2f, size / 2f, size / 3f, borderPaint)
+
+    return bitmap
+}
+
+/**
+ * Создать маркер местоположения пользователя (синяя точка с белой обводкой).
+ */
+private fun createUserLocationMarker(): Bitmap {
+    val size = 48
+    val bitmap = createBitmap(size, size)
+    val canvas = Canvas(bitmap)
+
+    // Синий круг
+    val bluePaint = Paint().apply {
+        this.color = Color.parseColor("#4285F4") // Google Blue
+        isAntiAlias = true
+    }
+    canvas.drawCircle(size / 2f, size / 2f, size / 2.5f, bluePaint)
+
+    // Белая обводка
+    val borderPaint = Paint().apply {
+        this.color = Color.WHITE
+        isAntiAlias = true
+        strokeWidth = 3f
+        style = Paint.Style.STROKE
+    }
+    canvas.drawCircle(size / 2f, size / 2f, size / 2.5f, borderPaint)
 
     return bitmap
 }

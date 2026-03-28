@@ -168,8 +168,8 @@ class MapViewModel @Inject constructor(
                             longitude = location.longitude,
                             accuracy = location.accuracy,
                             speed = location.speed
-                        )
-                        // Не меняем cameraPosition здесь - это вызывает сброс камеры
+                        ),
+                        userLocationPoint = com.yandex.mapkit.geometry.Point(location.latitude, location.longitude)
                     )
 
                     checkLandmarkAchievements(location)
@@ -216,7 +216,8 @@ class MapViewModel @Inject constructor(
                         longitude = location.longitude,
                         accuracy = location.accuracy,
                         speed = location.speed
-                    )
+                    ),
+                    userLocationPoint = com.yandex.mapkit.geometry.Point(location.latitude, location.longitude)
                 )
                 checkLandmarkAchievements(location)
             }
