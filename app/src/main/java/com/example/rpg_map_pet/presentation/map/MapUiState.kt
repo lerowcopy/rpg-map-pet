@@ -1,7 +1,11 @@
-package com.example.rpg_map_pet.presentation.model
+package com.example.rpg_map_pet.presentation.map
 
 import com.example.rpg_map_pet.domain.model.Landmark
 
+/**
+ * UI State for the map screen.
+ * Represents all the UI data needed to render the map screen.
+ */
 data class MapUiState(
     val userLocation: UserLocationState = UserLocationState.Loading,
     val cameraPosition: CameraPositionState? = null,
@@ -10,6 +14,9 @@ data class MapUiState(
     val showLandmarkInfo: Boolean = false
 )
 
+/**
+ * Represents the state of user location in the UI.
+ */
 sealed class UserLocationState {
     object Loading : UserLocationState()
     data class Success(
@@ -21,6 +28,9 @@ sealed class UserLocationState {
     data class Error(val message: String) : UserLocationState()
 }
 
+/**
+ * Represents the camera position state for the map.
+ */
 data class CameraPositionState(
     val latitude: Double,
     val longitude: Double,

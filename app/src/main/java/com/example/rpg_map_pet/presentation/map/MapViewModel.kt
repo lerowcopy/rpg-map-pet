@@ -1,18 +1,17 @@
-package com.example.rpg_map_pet.presentation.ui
+package com.example.rpg_map_pet.presentation.map
 
 import android.content.Context
 import android.location.LocationManager
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.rpg_map_pet.core.result.Result
+import com.example.rpg_map_pet.domain.landmark.GetLandmarks
+import com.example.rpg_map_pet.domain.landmark.MarkLandmarkAsVisited
+import com.example.rpg_map_pet.domain.location.GetCurrentLocation
+import com.example.rpg_map_pet.domain.location.GetLocationUpdates
 import com.example.rpg_map_pet.domain.model.Landmark
 import com.example.rpg_map_pet.domain.model.UserLocation
-import com.example.rpg_map_pet.domain.repository.LandmarkRepository
-import com.example.rpg_map_pet.domain.usecase.GetCurrentLocation
-import com.example.rpg_map_pet.domain.usecase.GetLocationUpdates
-import com.example.rpg_map_pet.presentation.model.CameraPositionState
-import com.example.rpg_map_pet.presentation.model.MapUiState
-import com.example.rpg_map_pet.presentation.model.UserLocationState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,11 +21,16 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * ViewModel for the map screen.
+ * Handles user location tracking, landmark display, and visit tracking.
+ */
 @HiltViewModel
 class MapViewModel @Inject constructor(
     private val getCurrentLocation: GetCurrentLocation,
     private val getLocationUpdates: GetLocationUpdates,
-    private val landmarkRepository: LandmarkRepository
+    private val getLandmarks: GetLandmarks,
+    private val markLandmarkAsVisited: MarkLandmarkAsVisited
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MapUiState())
@@ -44,7 +48,7 @@ class MapViewModel @Inject constructor(
     }
 
     private fun observeLandmarks() {
-        landmarkRepository.getActiveLandmarks()
+        getLandmarks()
             .onEach { landmarks ->
                 _uiState.value = _uiState.value.copy(landmarks = landmarks)
             }
@@ -72,9 +76,9 @@ class MapViewModel @Inject constructor(
 
                     checkLandmarkAchievements(location)
                 },
-                onFailure = { error ->
+                onError = { error, message ->
                     _uiState.value = _uiState.value.copy(
-                        userLocation = UserLocationState.Error(error.message ?: "Unknown error")
+                        userLocation = UserLocationState.Error(message ?: "Unknown error")
                     )
                 }
             )
@@ -86,8 +90,8 @@ class MapViewModel @Inject constructor(
             val currentState = _uiState.value
             currentState.landmarks.forEach { landmark ->
                 if (!landmark.isVisited &&
-                    landmarkRepository.isUserNearLandmark(location.latitude, location.longitude, landmark)) {
-                    landmarkRepository.markAsVisited(landmark.id)
+                    isUserNearLandmark(location, landmark)) {
+                    markLandmarkAsVisited(landmark.id)
                 }
             }
         }
@@ -149,9 +153,9 @@ class MapViewModel @Inject constructor(
 
     fun markAsVisited(landmarkId: String) {
         viewModelScope.launch {
-            landmarkRepository.markAsVisited(landmarkId)
+            markLandmarkAsVisited(landmarkId)
         }
-        
+
         val currentLandmarks = _uiState.value.landmarks
         val updatedLandmarks = currentLandmarks.map { landmark ->
             if (landmark.id == landmarkId) {
@@ -174,8 +178,36 @@ class MapViewModel @Inject constructor(
     fun hideEnableGpsDialog() {
         _showEnableGpsDialog.value = false
     }
+
+    private fun isUserNearLandmark(userLocation: UserLocation, landmark: Landmark): Boolean {
+        val distance = calculateDistance(
+            userLocation.latitude,
+            userLocation.longitude,
+            landmark.latitude,
+            landmark.longitude
+        )
+        return distance <= landmark.radius
+    }
+
+    private fun calculateDistance(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Float {
+        val earthRadius = 6371000
+
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLng = Math.toRadians(lng2 - lng1)
+
+        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                Math.sin(dLng / 2) * Math.sin(dLng / 2)
+
+        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+        return (earthRadius * c).toFloat()
+    }
 }
 
+/**
+ * Checks if location services are enabled on the device.
+ */
 fun isLocationEnabled(context: Context): Boolean {
     val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
