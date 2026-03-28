@@ -24,12 +24,25 @@ object ClusterIconGenerator {
     fun generateIcon(cluster: Cluster): Bitmap {
         val size = cluster.size
 
-        // Цвет зависит от размера кластера
+        // Цвет зависит от посещённости и размера кластера
         val color = when {
-            size < 10 -> Color.parseColor("#4285F4") // Синий
-            size < 50 -> Color.parseColor("#F4B400") // Жёлтый
-            size < 100 -> Color.parseColor("#F4511E") // Оранжевый
-            else -> Color.parseColor("#D93025") // Красный
+            cluster.isAllVisited -> {
+                // Все метки посещённые — зелёный
+                Color.parseColor("#4CAF50")
+            }
+            cluster.isPartiallyVisited -> {
+                // Некоторые посещённые — жёлтый
+                Color.parseColor("#F4B400")
+            }
+            else -> {
+                // Ни одной посещённой — цвет от размера
+                when {
+                    size < 10 -> Color.parseColor("#4285F4") // Синий
+                    size < 50 -> Color.parseColor("#F4B400") // Жёлтый
+                    size < 100 -> Color.parseColor("#F4511E") // Оранжевый
+                    else -> Color.parseColor("#D93025") // Красный
+                }
+            }
         }
 
         return createBitmapWithText(size, color)

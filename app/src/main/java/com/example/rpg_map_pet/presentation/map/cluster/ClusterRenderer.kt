@@ -34,10 +34,11 @@ class ClusterRenderer(
             placemark.userData = cluster
 
             if (cluster.isSingle) {
-                // Одиночная метка — стандартный красный пин
-                placemark.setIcon(ImageProvider.fromBitmap(createDefaultPin()))
+                // Одиночная метка — пин зависит от статуса посещённости
+                val isVisited = cluster.items.first().landmark.isVisited
+                placemark.setIcon(ImageProvider.fromBitmap(createDefaultPin(isVisited)))
             } else {
-                // Кластер — кружок с цифрой
+                // Кластер — кружок с цифрой, цвет зависит от посещённости
                 val icon = ClusterIconGenerator.generateIcon(cluster)
                 placemark.setIcon(ImageProvider.fromBitmap(icon))
             }
@@ -73,16 +74,17 @@ class ClusterRenderer(
     }
 
     /**
-     * Создать стандартный красный пин для одиночных меток.
+     * Создать стандартный пин для одиночных меток.
+     * @param isVisited true для посещённой метки (зелёный), false для непосещённой (красный)
      */
-    private fun createDefaultPin(): Bitmap {
+    private fun createDefaultPin(isVisited: Boolean = false): Bitmap {
         val size = 48
         val bitmap = createBitmap(size, size)
         val canvas = Canvas(bitmap)
 
-        // Красный круг
+        // Цвет: зелёный для посещённых, красный для непосещённых
         val paint = Paint().apply {
-            this.color = Color.RED
+            this.color = if (isVisited) Color.GREEN else Color.RED
             isAntiAlias = true
         }
         canvas.drawCircle(size / 2f, size / 2f, size / 3f, paint)

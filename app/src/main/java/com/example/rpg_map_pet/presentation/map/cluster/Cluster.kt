@@ -18,6 +18,16 @@ data class Cluster(
     val isSingle: Boolean get() = size == 1
 
     /**
+     * true, если все метки в кластере посещённые.
+     */
+    val isAllVisited: Boolean get() = items.all { it.landmark.isVisited }
+
+    /**
+     * true, если некоторые метки в кластере посещённые.
+     */
+    val isPartiallyVisited: Boolean get() = items.any { it.landmark.isVisited } && !isAllVisited
+
+    /**
      * Получить единственную метку, если кластер одиночный.
      */
     fun getSingleLandmark(): ClusterItem? {
