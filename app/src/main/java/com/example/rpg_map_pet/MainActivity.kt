@@ -61,7 +61,11 @@ class MainActivity : ComponentActivity() {
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        // Разрешения получены, инициализация происходит в AppNavHost через LaunchedEffect
+        val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+
+        Log.d("MainActivity", "Permission result: fine=$fineLocationGranted, coarse=$coarseLocationGranted")
+        // Разрешение обновлено — Compose автоматически перепроверит через LaunchedEffect(Unit)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -115,6 +119,45 @@ fun MapScreenContent(
     val showEnableGpsDialog by viewModel.showEnableGpsDialog.collectAsState()
     val context = LocalContext.current
 
+    // Состояние разрешения — обновляется при изменении
+    var hasLocationPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    // Перепроверка разрешения при каждом запуске экрана
+    LaunchedEffect(Unit) {
+        hasLocationPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        
+        Log.d("MapScreenContent", "🔍 Permission check: $hasLocationPermission")
+    }
+
+    // Триггер на изменение разрешения — загрузка локации
+    LaunchedEffect(hasLocationPermission) {
+        if (hasLocationPermission) {
+            Log.d("MapScreenContent", "✅ Permission granted, loading location...")
+            viewModel.loadUserLocation()
+            viewModel.startLocationUpdates()
+        } else {
+            Log.d("MapScreenContent", "⚠️ No location permission yet")
+        }
+    }
+
     if (showEnableGpsDialog) {
         EnableGpsDialog(
             onConfirm = {
@@ -132,8 +175,7 @@ fun MapScreenContent(
         viewModel = viewModel,
         onNavigateToLandmark = onNavigateToLandmark,
         onNavigateToVisited = {
-            // Сохраняем позицию камеры перед переходом
-            viewModel.saveCurrentCameraPosition()
+            // Позиция сохраняется внутри YandexMapView через cameraListener
             onNavigateToVisited()
         }
     )
@@ -349,19 +391,56 @@ fun YandexMapView(
     var hasCentered by rememberSaveable { mutableStateOf(false) }
     var hasRestoredCamera by rememberSaveable { mutableStateOf(false) }
 
-    // Восстановление позиции камеры после возврата с другого экрана
-    LaunchedEffect(Unit) {
-        val savedPos = viewModel.restoreCameraPosition()
-        if (savedPos != null && !hasRestoredCamera && hasCentered) {
+    // Центрирование на местоположении пользователя (только первый запуск)
+    LaunchedEffect(uiState.userLocation) {
+        val loc = uiState.userLocation
+        if (loc is UserLocationState.Success && !hasCentered) {
             map.move(
                 CameraPosition(
-                    Point(savedPos.latitude, savedPos.longitude),
-                    savedPos.zoom, 0f, 0f
+                    Point(loc.latitude, loc.longitude),
+                    16f, 0f, 0f
                 ),
-                Animation(Animation.Type.SMOOTH, 0f),
+                Animation(Animation.Type.SMOOTH, 1f),
                 null
             )
-            hasRestoredCamera = true
+            hasCentered = true
+            Log.d("YandexMapView", "🎯 Centered on user location")
+        }
+    }
+
+    // Восстановление позиции камеры после возврата с другого экрана
+    LaunchedEffect(hasCentered, uiState.landmarks) {
+        // Восстанавливаем только если уже было центрирование на пользователе
+        // И метки уже загружены (чтобы карта была готова)
+        if (hasCentered && uiState.landmarks.isNotEmpty()) {
+            val savedPos = viewModel.restoreCameraPosition()
+            if (savedPos != null && !hasRestoredCamera) {
+                map.move(
+                    CameraPosition(
+                        Point(savedPos.latitude, savedPos.longitude),
+                        savedPos.zoom, 0f, 0f
+                    ),
+                    Animation(Animation.Type.SMOOTH, 0f),
+                    null
+                )
+                hasRestoredCamera = true
+                Log.d("YandexMapView", "🔄 Camera restored to ${savedPos.latitude}, ${savedPos.longitude}, zoom=${savedPos.zoom}")
+            }
+        }
+    }
+
+    // Сброс флага hasRestoredCamera при возврате на экран карты
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                // Экран стал видимым — сбрасываем флаг для восстановления
+                hasRestoredCamera = false
+                Log.d("YandexMapView", "🔄 hasRestoredCamera reset")
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose {
+            lifecycle.removeObserver(observer)
         }
     }
 
@@ -405,45 +484,6 @@ fun YandexMapView(
 
         onDispose {
             lifecycle.removeObserver(observer)
-        }
-    }
-
-    // ✅ центрирование только при первом запуске
-    LaunchedEffect(uiState.userLocation) {
-        val loc = uiState.userLocation
-        if (loc is UserLocationState.Success && !hasCentered) {
-            map.move(
-                CameraPosition(
-                    Point(loc.latitude, loc.longitude),
-                    16f, 0f, 0f
-                ),
-                Animation(Animation.Type.SMOOTH, 1f),
-                null
-            )
-            hasCentered = true
-        }
-    }
-
-    // ✅ Восстановление позиции камеры после возврата с экрана метки
-    LaunchedEffect(hasRestoredCamera, hasCentered) {
-        val savedPos = viewModel.restoreCameraPosition()
-        if (savedPos != null && !hasRestoredCamera && hasCentered) {
-            map.move(
-                CameraPosition(
-                    Point(savedPos.latitude, savedPos.longitude),
-                    savedPos.zoom, 0f, 0f
-                ),
-                Animation(Animation.Type.SMOOTH, 0f),
-                null
-            )
-            hasRestoredCamera = true
-        }
-    }
-
-    // Сброс флага при уходе с экрана (чтобы восстановить при следующем возврате)
-    DisposableEffect(Unit) {
-        onDispose {
-            hasRestoredCamera = false
         }
     }
 
@@ -500,12 +540,21 @@ fun YandexMapView(
 
         // Кнопка перехода к посещённым меткам
         FloatingActionButton(
-            onClick = onNavigateToVisited,
+            onClick = {
+                // Сохраняем текущую позицию камеры перед переходом
+                val cameraPos = map.cameraPosition
+                viewModel.saveCurrentCameraPosition(
+                    cameraPos.target.latitude,
+                    cameraPos.target.longitude,
+                    cameraPos.zoom
+                )
+                onNavigateToVisited()
+            },
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(16.dp),
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
         ) {
             Icon(
                 imageVector = androidx.compose.material.icons.Icons.Default.CheckCircle,
@@ -538,10 +587,12 @@ fun YandexMapView(
             }
         }
 
+        // Кнопка "Я здесь" — всегда активна
         Button(
             onClick = {
                 val loc = uiState.userLocation
                 if (loc is UserLocationState.Success) {
+                    // Локация уже загружена — центрируем камеру
                     map.move(
                         CameraPosition(
                             Point(loc.latitude, loc.longitude),
@@ -550,12 +601,16 @@ fun YandexMapView(
                         Animation(Animation.Type.SMOOTH, 0.5f),
                         null
                     )
+                } else {
+                    // Локация ещё не загружена — пробуем загрузить
+                    Log.d("YandexMapView", "📍 Button clicked, loading location...")
+                    viewModel.loadUserLocation()
+                    viewModel.startLocationUpdates()
                 }
             },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(16.dp),
-            enabled = uiState.userLocation is UserLocationState.Success
+                .padding(16.dp)
         ) {
             Text("📍 Я здесь")
         }
