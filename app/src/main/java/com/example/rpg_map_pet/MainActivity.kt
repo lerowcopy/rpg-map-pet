@@ -392,7 +392,7 @@ fun YandexMapView(
     }
 
     LaunchedEffect(uiState.landmarks) {
-        Log.d("YandexMapView", "Updating landmarks: ${uiState.landmarks.size}")
+        Log.d("YandexMapView", "🗺️ Updating landmarks: ${uiState.landmarks.size}")
 
         landmarksCollection.clear()
         tapListeners.clear()
@@ -401,7 +401,7 @@ fun YandexMapView(
 
             val listener = com.yandex.mapkit.map.MapObjectTapListener { mapObject, _ ->
                 val lm = mapObject.userData as? Landmark
-                Log.d("YandexMapView", "Tap on: ${lm?.name}")
+                Log.d("YandexMapView", "👆 Tap on: ${lm?.name}")
                 lm?.let { 
                     // Сохраняем текущую позицию камеры перед переходом
                     val cameraPos = map.cameraPosition
@@ -435,7 +435,7 @@ fun YandexMapView(
             tapListeners.add(listener)
         }
 
-        Log.d("YandexMapView", "All landmarks added")
+        Log.d("YandexMapView", "✨ All ${uiState.landmarks.size} landmarks added to map")
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -443,6 +443,31 @@ fun YandexMapView(
             factory = { mapView },
             modifier = Modifier.fillMaxSize()
         )
+
+        // Счётчик меток в углу экрана
+        Card(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp)
+            ) {
+                Text(
+                    text = "📍 Меток: ${uiState.landmarks.size}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "🔍 Zoom: ${String.format("%.1f", uiState.cameraPosition?.zoom ?: 0f)}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
 
         Button(
             onClick = {

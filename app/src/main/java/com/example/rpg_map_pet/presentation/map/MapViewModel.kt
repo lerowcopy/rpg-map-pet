@@ -97,13 +97,17 @@ class MapViewModel @Inject constructor(
         val minLng = cameraPos.longitude - lngDelta
         val maxLng = cameraPos.longitude + lngDelta
 
-        Log.d(TAG, "Loading landmarks for bbox: [$minLat, $maxLat] x [$minLng, $maxLng]")
+        Log.d(TAG, "📍 Loading landmarks for bbox: [$minLat, $maxLat] x [$minLng, $maxLng], zoom=${cameraPos.zoom}")
 
         viewModelScope.launch {
             getLandmarksInBoundingBox(
                 GetLandmarksInBoundingBox.Params(minLat, maxLat, minLng, maxLng)
             ).onEach { landmarks ->
-                Log.d(TAG, "Loaded ${landmarks.size} landmarks")
+                Log.d(TAG, "✅ Loaded ${landmarks.size} landmarks for zoom ${cameraPos.zoom}")
+                if (landmarks.isNotEmpty()) {
+                    val names = landmarks.take(5).joinToString(", ") { it.name }
+                    Log.d(TAG, "🏛️ First 5: $names${if (landmarks.size > 5) "..." else ""}")
+                }
                 _uiState.value = _uiState.value.copy(landmarks = landmarks)
             }.launchIn(viewModelScope)
         }
