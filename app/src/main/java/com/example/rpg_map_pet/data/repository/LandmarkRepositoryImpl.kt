@@ -5,11 +5,12 @@ import com.example.rpg_map_pet.core.utils.calculateDistance
 import com.example.rpg_map_pet.data.local.GeoJsonImporter
 import com.example.rpg_map_pet.data.local.LandmarkDao
 import com.example.rpg_map_pet.data.local.LandmarkEntity
+import com.example.rpg_map_pet.data.local.LandmarkPhotoDao
+import com.example.rpg_map_pet.data.local.toDomainModel
 import com.example.rpg_map_pet.domain.landmark.ImportResult
 import com.example.rpg_map_pet.domain.landmark.LandmarkRepository
 import com.example.rpg_map_pet.domain.model.Landmark
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,7 +18,8 @@ import javax.inject.Singleton
 @Singleton
 class LandmarkRepositoryImpl @Inject constructor(
     private val landmarkDao: LandmarkDao,
-    private val geoJsonImporter: GeoJsonImporter
+    private val geoJsonImporter: GeoJsonImporter,
+    private val landmarkPhotoDao: LandmarkPhotoDao
 ) : LandmarkRepository {
 
     override fun getLandmarks(): Flow<List<Landmark>> =
@@ -60,7 +62,9 @@ class LandmarkRepositoryImpl @Inject constructor(
         }
 
     override suspend fun getLandmarkById(landmarkId: String): Landmark? {
-        return landmarkDao.getLandmarkById(landmarkId)?.toDomainModel()
+        val entity = landmarkDao.getLandmarkById(landmarkId) ?: return null
+        val photos = landmarkPhotoDao.getPhotosByLandmarkIdSync(landmarkId).map { it.photoPath }
+        return entity.toDomainModel(photos)
     }
 
     override suspend fun markAsVisited(landmarkId: String) {
@@ -88,17 +92,24 @@ class LandmarkRepositoryImpl @Inject constructor(
         return landmarkDao.getLandmarksCount()
     }
 
-    private fun LandmarkEntity.toDomainModel(): Landmark {
-        return Landmark(
-            id = id,
-            name = name,
-            description = description,
-            latitude = latitude,
-            longitude = longitude,
-            radius = 50f, // Default radius for landmarks
-            isVisited = isCompleted,
-            visitedAt = completedAt
+    override fun getLandmarkPhotos(landmarkId: String): Flow<List<String>> =
+        landmarkPhotoDao.getPhotosByLandmarkId(landmarkId).map { entities ->
+            entities.map { it.photoPath }
+        }
+
+    override fun getLandmarkPhotosWithIds(landmarkId: String): Flow<List<com.example.rpg_map_pet.data.local.LandmarkPhotoEntity>> =
+        landmarkPhotoDao.getPhotosByLandmarkId(landmarkId)
+
+    override suspend fun addLandmarkPhoto(landmarkId: String, photoPath: String) {
+        val photoEntity = com.example.rpg_map_pet.data.local.LandmarkPhotoEntity(
+            landmarkId = landmarkId,
+            photoPath = photoPath
         )
+        landmarkPhotoDao.insertPhoto(photoEntity)
+    }
+
+    override suspend fun deleteLandmarkPhoto(photoId: Long) {
+        landmarkPhotoDao.deletePhoto(photoId)
     }
 }
 

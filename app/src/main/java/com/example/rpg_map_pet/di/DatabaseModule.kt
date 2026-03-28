@@ -3,6 +3,7 @@ package com.example.rpg_map_pet.di
 import android.content.Context
 import androidx.room.Room
 import com.example.rpg_map_pet.data.local.LandmarkDao
+import com.example.rpg_map_pet.data.local.LandmarkPhotoDao
 import com.example.rpg_map_pet.data.local.QuestDao
 import com.example.rpg_map_pet.data.local.QuestDatabase
 import dagger.Module
@@ -42,5 +43,11 @@ object DatabaseModule {
     @Singleton
     fun provideLandmarkDao(database: QuestDatabase): LandmarkDao {
         return database.landmarkDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideLandmarkPhotoDao(database: QuestDatabase): LandmarkPhotoDao {
+        return database.landmarkPhotoDao()
     }
 }

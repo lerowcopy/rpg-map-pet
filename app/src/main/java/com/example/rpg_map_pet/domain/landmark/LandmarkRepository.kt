@@ -36,6 +36,26 @@ interface LandmarkRepository {
         longitude: Double,
         radiusMeters: Float
     ): Flow<List<Landmark>>
+
+    /**
+     * Получить фотографии метки.
+     */
+    fun getLandmarkPhotos(landmarkId: String): Flow<List<String>>
+
+    /**
+     * Получить фотографии метки с ID (для UI).
+     */
+    fun getLandmarkPhotosWithIds(landmarkId: String): Flow<List<com.example.rpg_map_pet.data.local.LandmarkPhotoEntity>>
+
+    /**
+     * Добавить фотографию к метке.
+     */
+    suspend fun addLandmarkPhoto(landmarkId: String, photoPath: String)
+
+    /**
+     * Удалить фотографию метки.
+     */
+    suspend fun deleteLandmarkPhoto(photoId: Long)
 }
 
 sealed class ImportResult {
