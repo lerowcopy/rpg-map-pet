@@ -280,40 +280,7 @@ private fun YandexMapView(
         Log.d("YandexMapView", "✨ Rendered: $clusterCount clusters, $singleCount single markers")
     }
 
-    Scaffold(
-        bottomBar = {
-            BottomAppBar(
-                modifier = Modifier.height(60.dp),
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface
-            ) {
-                IconButton(
-                    modifier = Modifier.width(100.dp),
-                    onClick = {
-                        val cameraPos = map.cameraPosition
-                        viewModel.saveCurrentCameraPosition(
-                            cameraPos.target.latitude,
-                            cameraPos.target.longitude,
-                            cameraPos.zoom
-                        )
-                        Log.d("YandexMapView", cameraPos.toString())
-                        onNavigateToVisited()
-                    }
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = "Посещённые места"
-                        )
-                        Text(
-                            text = "Посещённые",
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                }
-            }
-        }
-    ) { paddingValues ->
+    Scaffold { paddingValues ->
         Box(
             Modifier
                 .fillMaxSize()
@@ -324,7 +291,7 @@ private fun YandexMapView(
                 modifier = Modifier.fillMaxSize()
             )
 
-            Card(
+            /*Card(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(16.dp),
@@ -346,7 +313,7 @@ private fun YandexMapView(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            }
+            }*/
 
             Button(
                 onClick = {
@@ -371,6 +338,30 @@ private fun YandexMapView(
                     .padding(16.dp)
             ) {
                 Text("📍 Я здесь")
+            }
+
+            // Плавающая кнопка "Посещённые места"
+            FloatingActionButton(
+                onClick = {
+                    val cameraPos = map.cameraPosition
+                    viewModel.saveCurrentCameraPosition(
+                        cameraPos.target.latitude,
+                        cameraPos.target.longitude,
+                        cameraPos.zoom
+                    )
+                    Log.d("YandexMapView", "🗺️ Navigate to visited: $cameraPos")
+                    onNavigateToVisited()
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(16.dp),
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "Посещённые места",
+                    modifier = Modifier.size(28.dp)
+                )
             }
         }
     }
