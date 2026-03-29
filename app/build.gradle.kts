@@ -36,16 +36,9 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField(
-                "String",
-                "GEMINI_API_KEY",
-                "\"${localProperties["GEMINI_API_KEY"] ?: ""}\""
-            )
-            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8080/api/\"")
             isMinifyEnabled = false
         }
         release {
-            buildConfigField("String", "BASE_URL", "\"https://api.yourapp.com/\"")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -108,11 +101,7 @@ dependencies {
     // Play Services Location
     implementation(libs.play.services.location)
 
-    // Network
-    implementation(libs.retrofit)
-    implementation(libs.retrofit.gson)
-    implementation(libs.okhttp)
-    implementation(libs.okhttp.logging)
+    // Gson для GeoJSON импортера
     implementation(libs.gson)
 
     // Room
