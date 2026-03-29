@@ -39,6 +39,7 @@ import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
 import com.example.rpg_map_pet.presentation.map.cluster.Cluster
 import com.example.rpg_map_pet.presentation.map.cluster.ClusterRenderer
+import com.yandex.mapkit.map.CameraListener
 
 @Composable
 fun MapScreen(
@@ -184,7 +185,6 @@ private fun YandexMapView(
     }
 
     LaunchedEffect(hasCentered, uiState.landmarks) {
-        Log.d("YandexMapView", hasCentered.toString())
         if (hasCentered && uiState.landmarks.isNotEmpty()) {
             val savedPos = viewModel.restoreCameraPosition()
             if (savedPos != null && !hasRestoredCamera) {
@@ -221,8 +221,9 @@ private fun YandexMapView(
     }
 
     DisposableEffect(map) {
-        val cameraListener = com.yandex.mapkit.map.CameraListener { _, cameraPosition, _, _ ->
+        val cameraListener = CameraListener { _, cameraPosition, _, _ ->
             val savedPos = viewModel.restoreCameraPosition()
+            Log.d("camera", savedPos.toString())
             if (savedPos == null) {
                 viewModel.updateCameraPositionForLoading(
                     cameraPosition.target.latitude,

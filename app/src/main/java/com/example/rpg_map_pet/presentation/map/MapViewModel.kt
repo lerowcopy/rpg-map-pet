@@ -19,6 +19,7 @@ import com.example.rpg_map_pet.presentation.map.cluster.ClusterConfig
 import com.example.rpg_map_pet.presentation.map.cluster.ClusterItem
 import com.example.rpg_map_pet.presentation.map.cluster.GridBasedClusterAlgorithm
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -87,10 +88,11 @@ class MapViewModel @Inject constructor(
         startLocationUpdates()
     }
 
+    @OptIn(FlowPreview::class)
     private fun observeCameraPosition() {
         cameraPositionChannel
             .receiveAsFlow()
-            .debounce(500) // Ждём 500ms после последнего перемещения камеры
+            .debounce(200) // Ждём 500ms после последнего перемещения камеры
             .onEach { cameraPos ->
                 loadLandmarksForCamera(cameraPos)
             }

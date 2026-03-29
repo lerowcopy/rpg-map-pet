@@ -32,6 +32,7 @@ fun LandmarkEntity.toDomainModel(photos: List<String> = emptyList()): Landmark {
     return Landmark(
         id = id,
         name = name,
+        type = type,
         description = description,
         latitude = latitude,
         longitude = longitude,

@@ -205,10 +205,11 @@ private fun LandmarkDetailContent(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Название метки
+            // Название метки с типом
             item {
+                val displayName = formatLandmarkName(landmark.name, landmark.type)
                 Text(
-                    text = landmark.name,
+                    text = displayName,
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -384,4 +385,33 @@ private fun createCameraPhotoFile(context: android.content.Context, landmarkId: 
     val timestamp = System.currentTimeMillis()
     val randomSuffix = (1000..9999).random()
     return File(photosDir, "camera_${safeLandmarkId}_${timestamp}_${randomSuffix}.jpg")
+}
+
+/**
+ * Отформатировать название метки с добавлением типа.
+ */
+private fun formatLandmarkName(name: String, type: String): String {
+    if (type.isBlank()) return name
+
+    val typeText = when (type.lowercase()) {
+        "monument" -> "Памятник"
+        "memorial" -> "Мемориал"
+        "bust" -> "Бюст"
+        "statue" -> "Статуя"
+        "attraction" -> "Достопримечательность"
+        "building" -> "Здание"
+        "church" -> "Храм"
+        "cathedral" -> "Собор"
+        "museum" -> "Музей"
+        "park" -> "Парк"
+        "square" -> "Площадь"
+        "bridge" -> "Мост"
+        "fountain" -> "Фонтан"
+        "ruins" -> "Руины"
+        "castle" -> "Замок"
+        "tower" -> "Башня"
+        else -> type.replaceFirstChar { it.uppercaseChar() }
+    }
+
+    return "$typeText: $name"
 }
