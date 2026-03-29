@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -189,7 +190,7 @@ fun VisitedLandmarkCard(
                 // Кнопка "отметить"
                 IconButton(onClick = onMarkAsNotVisited) {
                     Icon(
-                        imageVector = Icons.Default.CheckCircle,
+                        imageVector = Icons.Default.Cancel,
                         contentDescription = "Отметить как непосещённое",
                         tint = MaterialTheme.colorScheme.primary
                     )
