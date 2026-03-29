@@ -12,6 +12,7 @@ import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -315,7 +316,8 @@ private fun YandexMapView(
                 }
             }*/
 
-            Button(
+            // Плавающая кнопка "Я здесь"
+            FloatingActionButton(
                 onClick = {
                     val loc = uiState.userLocation
                     if (loc is UserLocationState.Success) {
@@ -335,9 +337,14 @@ private fun YandexMapView(
                 },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp)
+                    .padding(16.dp),
+                containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Text("📍 Я здесь")
+                Icon(
+                    imageVector = Icons.Default.MyLocation,
+                    contentDescription = "Я здесь",
+                    modifier = Modifier.size(28.dp)
+                )
             }
 
             // Плавающая кнопка "Посещённые места"
