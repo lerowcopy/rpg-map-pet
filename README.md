@@ -4,6 +4,23 @@ Android-приложение для исследования города с и�
 
 ---
 
+## 📸 Галерея
+
+<div align="center">
+
+<img src="docs/screenshots/photo_1_2026-03-30_23-21-40.jpg" alt="Карта с достопримечательностями" width="200"/>
+<img src="docs/screenshots/photo_2_2026-03-30_23-21-40.jpg" alt="Кластеризация меток" width="200"/>
+<img src="docs/screenshots/photo_3_2026-03-30_23-21-40.jpg" alt="Детали места" width="200"/>
+<img src="docs/screenshots/photo_4_2026-03-30_23-21-40.jpg" alt="Добавление фотографий" width="200"/>
+<img src="docs/screenshots/photo_5_2026-03-30_23-21-40.jpg" alt="Список посещённых мест" width="200"/>
+<img src="docs/screenshots/photo_6_2026-03-30_23-21-40.jpg" alt="Галерея фотографий" width="200"/>
+<img src="docs/screenshots/photo_7_2026-03-30_23-21-40.jpg" alt="Навигация" width="200"/>
+<img src="docs/screenshots/photo_2026-03-30_23-25-05.jpg" alt="Дополнительно" width="200"/>
+
+</div>
+
+---
+
 ## 📱 Возможности
 
 ### 🎮 Основные функции
