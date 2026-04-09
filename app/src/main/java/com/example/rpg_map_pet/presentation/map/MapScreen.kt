@@ -7,9 +7,11 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.net.Uri
 import android.provider.Settings
 import android.util.Log
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MyLocation
@@ -292,30 +294,6 @@ private fun YandexMapView(
                 modifier = Modifier.fillMaxSize()
             )
 
-            /*Card(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(12.dp)
-                ) {
-                    Text(
-                        text = "📍 Меток: ${uiState.landmarks.size}",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "🔍 Zoom: ${String.format("%.1f", uiState.cameraPosition?.zoom ?: 0f)}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }*/
-
             // Плавающая кнопка "Я здесь"
             FloatingActionButton(
                 onClick = {
@@ -337,7 +315,7 @@ private fun YandexMapView(
                 },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp),
+                    .padding(25.dp),
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(
@@ -361,7 +339,7 @@ private fun YandexMapView(
                 },
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(16.dp),
+                    .padding(25.dp),
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(
@@ -370,6 +348,23 @@ private fun YandexMapView(
                     modifier = Modifier.size(28.dp)
                 )
             }
+
+            // Ссылка на условия использования Яндекс Карт
+            val termsUrl = "https://yandex.ru/legal/maps_api/"
+            val annotatedString = remember {
+                androidx.compose.ui.text.AnnotatedString("Условия использования")
+            }
+            ClickableText(
+                text = annotatedString,
+                onClick = { offset ->
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(termsUrl))
+                    context.startActivity(intent)
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(end = 8.dp, bottom = 4.dp)
+                    .wrapContentWidth()
+            )
         }
     }
 }
